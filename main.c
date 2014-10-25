@@ -15,8 +15,11 @@ int comp_func(const void*, const void*);
 
 int main(int argc, char* argv[]){
     /** PHASE 0: CREATE AND DISTRIBUTE DATA. **/
-    int numProcessors, dataSize, myid, numProcessorsMPI, namelen, regSampleIndex, pivotIndex;
-    int i;
+    int numProcessors, dataSize, myid,namelen, w, p;
+    /**numProcessors is the number of processors we are using to sort, dataSize is the number of integers we are sorting,
+    ** myid is the id number that each processor will have, w and p are values for determining regular samples and pivot locations,
+    **these 2 variable names come from the PSRS paper. **/
+    int i;//Not following C99 standard, so we can't declare loop variables inside the for loop structure, just reuse this i variable.
     char processor_name[MPI_MAX_PROCESSOR_NAME];
     MPI_Comm intercomm;
 
@@ -39,11 +42,10 @@ int main(int argc, char* argv[]){
         exit(0);
     }
 
-    regSampleIndex = dataSize / (pow(numProcessors, 2));
-    pivotIndex = (int) floor(numProcessors/2);
+    w = dataSize / (pow(numProcessors, 2));
+    p = (int) floor(numProcessors/2);
 
     MPI_Init(&argc, &argv);
-    MPI_Comm_size(MPI_COMM_WORLD, &numProcessorsMPI);
     MPI_Comm_rank(MPI_COMM_WORLD, &myid);
     MPI_Get_processor_name(processor_name, &namelen);
     MPI_Comm_get_parent(&intercomm);
@@ -69,7 +71,7 @@ int main(int argc, char* argv[]){
     }
     MPI_Barrier(MPI_COMM_WORLD);
 #if DEBUG
-    fprintf(stderr, "I am process %d that just passed the barrier with %d as my first value!.\n", myid, mydata[0]);
+    fprintf(stderr, "I am process %d that just passed the phase 1 barrier with %d as my first value!.\n", myid, mydata[0]);
 #endif
     /** PHASE 1: SORT LOCAL DATA AND FIND LOCAL SAMPLES **/
 
@@ -77,10 +79,47 @@ int main(int argc, char* argv[]){
     int localSample[numProcessors];
     memset(localSample, 0, sizeof(int) * (numProcessors));
     for(i = 0; i < numProcessors; i++){
-        localSample[i] = mydata[i*regSampleIndex];
+        localSample[i] = mydata[i*w];
+    }
+    MPI_Barrier(MPI_COMM_WORLD);
+#if DEBUG
+    for(i=0; i< numProcessors; i++){
+        fprintf(stderr, "I am process %d that passed the phase 2 barrier with %d as one of my regular samples!\n", myid, localSample[i]);
+    }
+#endif
+    /**PHASE 2: FIND PIVOTS AND PARTITION **/
+    int collectedSamples[numProcessors * numProcessors];
+    if(myid == 0){
+        memset(collectedSamples, 0, sizeof(int) * (numProcessors * numProcessors));
+        memcpy(collectedSamples, localSample, numProcessors * sizeof(int));
+        for(i = 1; i < numProcessors; i++){
+            MPI_Recv(&collectedSamples[0] + (i*numProcessors), numProcessors, MPI_INT, i, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+            /**Receives the regular sample from processor i and stores it in collectedSamples.**/
+        }
+        qsort(collectedSamples, numProcessors * numProcessors, sizeof(int), comp_func);
+#if DEBUG
+        for(i = 0; i < (numProcessors*numProcessors); i++){
+            fprintf(stderr, "Collected Sample number %d is %d.\n", i, collectedSamples[i]);
+        }
+#endif
+    } else {
+        MPI_Send(localSample, numProcessors, MPI_INT, 0, 0, MPI_COMM_WORLD);
+    }
+    MPI_Barrier(MPI_COMM_WORLD); //Mid phase 2 barrier.
+
+    int pivots[numProcessors-1];
+    memset(pivots, 0, sizeof(int) * (numProcessors-1));
+    if(myid == 0){
+        for(i = 1; i < numProcessors; i++){
+            pivots[i-1] = collectedSamples[(i*numProcessors)+p];
+        }
+#if DEBUG
+            for(i = 0; i < (numProcessors -1); i++){
+                fprintf(stderr, "Pivot %d is %d.\n", i, pivots[i]);
+            }
+#endif
     }
 
-    MPI_Barrier(MPI_COMM_WORLD);
     return 0;
 }
 
@@ -89,11 +128,50 @@ void create_data(int* data, int numData){
     /**
     ** Fills the passed in int array with numData random numbers.
     **/
+#if SETDATA
+    data[0] = 16;
+    data[1] = 2;
+    data[2] = 17;
+    data[3] = 24;
+    data[4] = 33;
+    data[5] = 28;
+    data[6] = 30;
+    data[7] = 1;
+    data[8] = 0;
+    data[9] = 27;
+    data[10] = 9;
+    data[11] = 25;
+    data[12] = 34;
+    data[13] = 23;
+    data[14] = 19;
+    data[15] = 18;
+    data[16] = 11;
+    data[17] = 7;
+    data[18] = 21;
+    data[19] = 13;
+    data[20] = 8;
+    data[21] = 35;
+    data[22] = 12;
+    data[23] = 29;
+    data[24] = 6;
+    data[25] = 3;
+    data[26] = 4;
+    data[27] = 14;
+    data[28] = 22;
+    data[29] = 15;
+    data[30] = 32;
+    data[31] = 10;
+    data[32] = 26;
+    data[33] = 31;
+    data[34] = 20;
+    data[35] = 5;
+#else
     srandom(20);
     int i;
     for(i = 0; i < numData; i++){
-        data[i] = random();
+        data[i] = random()%100;
     }
+#endif
 }
 
 int comp_func(const void* item1, const void* item2){
