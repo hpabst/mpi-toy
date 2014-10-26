@@ -8,12 +8,16 @@
 #include <math.h>
 
 #define DEBUG 1
+#define SETDATA 1
 
 
 void create_data(int*, int);
 int comp_func(const void*, const void*);
+void create_partitions(int numProcessors, int dataSize, int*, int*, int[][numProcessors/dataSize]);
 
 int main(int argc, char* argv[]){
+
+
     /** PHASE 0: CREATE AND DISTRIBUTE DATA. **/
     int numProcessors, dataSize, myid,namelen, w, p;
     /**numProcessors is the number of processors we are using to sort, dataSize is the number of integers we are sorting,
@@ -63,7 +67,7 @@ int main(int argc, char* argv[]){
         }
 #endif
         for(i = 1; i < numProcessors; i++){ /**Send the data to all the other processors.**/
-            MPI_Send(&baseData[0] + (i*numProcessors), dataSize/numProcessors, MPI_INT, i, 0, MPI_COMM_WORLD);
+            MPI_Send(&baseData[0] + (i*(dataSize/numProcessors)), dataSize/numProcessors, MPI_INT, i, 0, MPI_COMM_WORLD);
         }
         memcpy(mydata, baseData, sizeof(int) * (dataSize/numProcessors));
     } else { /**Otherwise you're a child machine, so you wait for your data and then wait at the barrier for Phase 1.**/
@@ -73,6 +77,8 @@ int main(int argc, char* argv[]){
 #if DEBUG
     fprintf(stderr, "I am process %d that just passed the phase 1 barrier with %d as my first value!.\n", myid, mydata[0]);
 #endif
+
+
     /** PHASE 1: SORT LOCAL DATA AND FIND LOCAL SAMPLES **/
 
     qsort(mydata, dataSize/numProcessors, sizeof(int), comp_func);
@@ -87,6 +93,8 @@ int main(int argc, char* argv[]){
         fprintf(stderr, "I am process %d that passed the phase 2 barrier with %d as one of my regular samples!\n", myid, localSample[i]);
     }
 #endif
+
+
     /**PHASE 2: FIND PIVOTS AND PARTITION **/
     int collectedSamples[numProcessors * numProcessors];
     if(myid == 0){
@@ -111,7 +119,7 @@ int main(int argc, char* argv[]){
     memset(pivots, 0, sizeof(int) * (numProcessors-1));
     if(myid == 0){
         for(i = 1; i < numProcessors; i++){
-            pivots[i-1] = collectedSamples[(i*numProcessors)+p];
+            pivots[i-1] = collectedSamples[(i*numProcessors)+p-1];
         }
 #if DEBUG
             for(i = 0; i < (numProcessors -1); i++){
@@ -119,8 +127,52 @@ int main(int argc, char* argv[]){
             }
 #endif
     }
+    MPI_Bcast(pivots, numProcessors-1, MPI_INT, 0, MPI_COMM_WORLD);//Send the pivots from the master process to all the other processes.
+    MPI_Barrier(MPI_COMM_WORLD);
 
+    /**PHASE 3: FIND AND EXCHANGE PARTITIONS **/
+
+    int localPartitions[numProcessors][dataSize/numProcessors]; //Using a 2-dimensional array to store local partitions.
+    //For each process there will be numProcessors partitions with a maximum size of dataSize/numProcessors each.
+    memset(localPartitions, -1, dataSize * sizeof(int)); //Since we only deal with non-negative numbers, a value of -1 indicates the end of the partition.
+    create_partitions(numProcessors, dataSize, pivots, mydata, localPartitions);
+#if DEBUG
+    fprintf(stderr,"PROCESS %d:\n\n", myid);
+    int j, f;
+    for(j = 0; j < numProcessors; j++){
+        for(f = 0; f < dataSize/numProcessors; f++){
+            if(localPartitions[j][f] == -1) break;
+            fprintf(stderr, "Partition %d element %d: %d.\n", j, f, localPartitions[j][f]);
+        }
+    }
+
+#endif
+
+    MPI_Finalize();
     return 0;
+}
+
+void create_partitions(int numProcessors, int dataSize, int* pivots, int* local_data, int partition_array[][dataSize/numProcessors]){
+    /**
+    * partition_array is a 2-dimensional array of ints, [numProcessors][dataSize/numProcessors],
+    * pivots is an array of numProcessors-1 ints,
+    * local_data is an array of dataSize/numProcessors ints.
+    * This function divides the local_data into partitions according to the passed in pivots and stores them in the passed in partition_array.
+    **/
+    int i, j = 0, part_size = 0;
+    int* part_start = local_data;
+    for(i = 0; i < (numProcessors-1); i++){//Iterate over each of the pivots.
+        while(local_data[j] <= pivots[i]){
+            j += 1;
+            part_size += 1;
+        }
+        memcpy(&partition_array[i][0], part_start, sizeof(int) * part_size);
+        part_size = 0;
+        part_start = &local_data[j];
+    }
+    memcpy(&partition_array[numProcessors-1][0], part_start, sizeof(int) * ((dataSize/numProcessors) - j));
+    //Put everything to the right of the last pivot into the final partition.
+    return;
 }
 
 
@@ -128,7 +180,6 @@ void create_data(int* data, int numData){
     /**
     ** Fills the passed in int array with numData random numbers.
     **/
-#if SETDATA
     data[0] = 16;
     data[1] = 2;
     data[2] = 17;
@@ -165,13 +216,12 @@ void create_data(int* data, int numData){
     data[33] = 31;
     data[34] = 20;
     data[35] = 5;
-#else
-    srandom(20);
+   /** srandom(20);
     int i;
     for(i = 0; i < numData; i++){
         data[i] = random()%100;
-    }
-#endif
+    }**/
+    return;
 }
 
 int comp_func(const void* item1, const void* item2){
