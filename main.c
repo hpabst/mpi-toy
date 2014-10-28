@@ -6,15 +6,17 @@
 #include <stdlib.h>
 #include <string.h>
 #include <math.h>
+#include <sys/time.h>
 
-#define DEBUG 1
-#define SETDATA 1
+#define DEBUG 0
 
 
 void create_data(int*, int);
 int comp_func(const void*, const void*);
 void create_partitions(int numProcessors, int dataSize, int*, int*, int[][numProcessors/dataSize]);
 void merge(int*, int*, int*);
+
+struct timeval before, after;
 
 int main(int argc, char* argv[]){
 
@@ -37,11 +39,6 @@ int main(int argc, char* argv[]){
     sscanf(argv[1], "%d", &numProcessors);
     sscanf(argv[2], "%d", &dataSize);
 
-#if DEBUG
-    fprintf(stderr, "Value of numProcessors: %d.\n", numProcessors);
-    fprintf(stderr, "Value of dataSize: %d.\n", dataSize);
-#endif
-
     if(!(dataSize%numProcessors == 0)){
         fprintf(stderr, "Error: The number of items to be sorted must be divisible by the number of processors.");
         exit(0);
@@ -62,11 +59,7 @@ int main(int argc, char* argv[]){
         int baseData[dataSize];
         memset(baseData, 0, sizeof(int)*dataSize);
         create_data(baseData, dataSize);
-#if DEBUG
-        for(i = 0; i < dataSize; i++){
-            fprintf(stderr, "Data item %d: %d.\n", i, baseData[i]);
-        }
-#endif
+
         for(i = 1; i < numProcessors; i++){ /**Send the data to all the other processors.**/
             MPI_Send(&baseData[0] + (i*(dataSize/numProcessors)), dataSize/numProcessors, MPI_INT, i, 0, MPI_COMM_WORLD);
         }
@@ -75,12 +68,13 @@ int main(int argc, char* argv[]){
         MPI_Recv(mydata, dataSize/numProcessors, MPI_INT, 0, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
     }
     MPI_Barrier(MPI_COMM_WORLD);
-#if DEBUG
-    fprintf(stderr, "I am process %d that just passed the phase 1 barrier with %d as my first value!.\n", myid, mydata[0]);
-#endif
 
 
     /** PHASE 1: SORT LOCAL DATA AND FIND LOCAL SAMPLES **/
+    //We start to measure time assuming all the data has already been distributed.
+    if(myid == 0){
+        gettimeofday(&before, NULL);
+    }
 
     qsort(mydata, dataSize/numProcessors, sizeof(int), comp_func);
     int localSample[numProcessors];
@@ -89,11 +83,6 @@ int main(int argc, char* argv[]){
         localSample[i] = mydata[i*w];
     }
     MPI_Barrier(MPI_COMM_WORLD);
-#if DEBUG
-    for(i=0; i< numProcessors; i++){
-        fprintf(stderr, "I am process %d that passed the phase 2 barrier with %d as one of my regular samples!\n", myid, localSample[i]);
-    }
-#endif
 
 
     /**PHASE 2: FIND PIVOTS AND PARTITION **/
@@ -106,11 +95,6 @@ int main(int argc, char* argv[]){
             /**Receives the regular sample from processor i and stores it in collectedSamples.**/
         }
         qsort(collectedSamples, numProcessors * numProcessors, sizeof(int), comp_func);
-#if DEBUG
-        for(i = 0; i < (numProcessors*numProcessors); i++){
-            fprintf(stderr, "Collected Sample number %d is %d.\n", i, collectedSamples[i]);
-        }
-#endif
     } else {
         MPI_Send(localSample, numProcessors, MPI_INT, 0, 0, MPI_COMM_WORLD);
     }
@@ -122,11 +106,6 @@ int main(int argc, char* argv[]){
         for(i = 1; i < numProcessors; i++){
             pivots[i-1] = collectedSamples[(i*numProcessors)+p-1];
         }
-#if DEBUG
-            for(i = 0; i < (numProcessors -1); i++){
-                fprintf(stderr, "Pivot %d is %d.\n", i, pivots[i]);
-            }
-#endif
     }
     MPI_Bcast(pivots, numProcessors-1, MPI_INT, 0, MPI_COMM_WORLD);//Send the pivots from the master process to all the other processes.
     MPI_Barrier(MPI_COMM_WORLD);
@@ -177,6 +156,12 @@ int main(int argc, char* argv[]){
             }
         }
     }
+    //We've sorted everything, so we stop timing.
+    if(myid == 0){
+        gettimeofday(&after, NULL);
+        printf("Final time count for %d items and %d processes:\n %ld microseconds\n %ld seconds\n", dataSize, numProcessors,
+               (long int) after.tv_usec - (long int) before.tv_usec, (long int) after.tv_sec - (long int) before.tv_sec);
+    }
 
 #if DEBUG
     if(myid == 0){
@@ -222,7 +207,7 @@ void create_data(int* data, int numData){
     /**
     ** Fills the passed in int array with numData random numbers.
     **/
-    data[0] = 16;
+    /**data[0] = 16;
     data[1] = 2;
     data[2] = 17;
     data[3] = 24;
@@ -257,12 +242,12 @@ void create_data(int* data, int numData){
     data[32] = 26;
     data[33] = 31;
     data[34] = 20;
-    data[35] = 5;
-   /** srandom(20);
+    data[35] = 5;**/
+    srandom(20);
     int i;
     for(i = 0; i < numData; i++){
-        data[i] = random()%100;
-    }**/
+        data[i] = random()%1000;
+    }
     return;
 }
 
