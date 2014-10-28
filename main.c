@@ -14,6 +14,7 @@
 void create_data(int*, int);
 int comp_func(const void*, const void*);
 void create_partitions(int numProcessors, int dataSize, int*, int*, int[][numProcessors/dataSize]);
+void merge(int*, int*, int*);
 
 int main(int argc, char* argv[]){
 
@@ -136,21 +137,62 @@ int main(int argc, char* argv[]){
     //For each process there will be numProcessors partitions with a maximum size of dataSize/numProcessors each.
     memset(localPartitions, -1, dataSize * sizeof(int)); //Since we only deal with non-negative numbers, a value of -1 indicates the end of the partition.
     create_partitions(numProcessors, dataSize, pivots, mydata, localPartitions);
-#if DEBUG
-    fprintf(stderr,"PROCESS %d:\n\n", myid);
-    int j, f;
-    for(j = 0; j < numProcessors; j++){
-        for(f = 0; f < dataSize/numProcessors; f++){
-            if(localPartitions[j][f] == -1) break;
-            fprintf(stderr, "Partition %d element %d: %d.\n", j, f, localPartitions[j][f]);
+
+    int sharedPartitions[numProcessors][dataSize/numProcessors];
+    memset(sharedPartitions, -1, dataSize * sizeof(int));
+    for(i = 0; i < numProcessors; i++){
+        MPI_Gather(&localPartitions[i][0], dataSize/numProcessors, MPI_INT, &sharedPartitions[0][0],
+                   dataSize/numProcessors, MPI_INT, i, MPI_COMM_WORLD);
+    }
+
+    /**PHASE 4: MERGE PARTITIONS **/
+    int resultArray[dataSize];
+    int tempHolder[dataSize];
+    memset(resultArray, -1, dataSize * sizeof(int));
+    memset(tempHolder, -1, dataSize * sizeof(int));
+    merge(sharedPartitions[0], sharedPartitions[1], resultArray);
+    for(i = 2; i < numProcessors; i++){
+        memcpy(tempHolder, resultArray, dataSize * sizeof(int));
+        merge(tempHolder, &sharedPartitions[i][0], resultArray);
+    }
+
+    MPI_Barrier(MPI_COMM_WORLD);
+
+    /**PHASE 5: GATHER AND CONCATENATE MERGED PARTITIONS**/
+    int gatheredPartitions[dataSize * numProcessors];
+    int sortedKeys[dataSize];//The final container of the sorted keys.
+    int sortMarker = 0;
+    if(myid == 0){
+        //No point in doing this across all processes.
+        memset(gatheredPartitions, 0, dataSize * numProcessors * sizeof(int));
+        memset(sortedKeys, 0, dataSize * sizeof(int));
+    }
+    MPI_Gather(resultArray, dataSize, MPI_INT, gatheredPartitions, dataSize, MPI_INT, 0, MPI_COMM_WORLD);
+
+    if(myid == 0){
+        for(i = 0; i < dataSize * numProcessors; i++){
+            if(gatheredPartitions[i] != -1){
+                sortedKeys[sortMarker] = gatheredPartitions[i];
+                sortMarker++;
+            }
         }
     }
 
+#if DEBUG
+    if(myid == 0){
+        fprintf(stderr, "Final sorted keys:\n\n");
+        for(i = 0; i < dataSize; i++){
+            fprintf(stderr, "Element %d: %d\n", i, sortedKeys[i]);
+        }
+    }
 #endif
-
     MPI_Finalize();
     return 0;
 }
+
+
+
+
 
 void create_partitions(int numProcessors, int dataSize, int* pivots, int* local_data, int partition_array[][dataSize/numProcessors]){
     /**
@@ -229,4 +271,42 @@ int comp_func(const void* item1, const void* item2){
     it1 = (int*) item1;
     it2 = (int*) item2;
     return (*it1 - *it2);
+}
+
+void merge(int* array1, int* array2, int* resultantArray){
+    //Merges 2 arrays and places the result in resultantArray.
+    //Taken from http://www.programmingsimplified.com/c/source-code/c-program-merge-two-arrays
+    //because I am terrible at C.
+    int i, j, k, m = 0, n = 0;
+    while(array1[m] != -1){
+        m++;
+    }
+    while(array2[n] != -1){
+        n++;
+    }
+    j = k = 0;
+    for(i = 0; i < m + n;){
+        if(j < m && k < n){
+            if(array1[j] < array2[k]){
+                resultantArray[i] = array1[j];
+                j++;
+            } else {
+                resultantArray[i] = array2[k];
+                k++;
+            }
+            i++;
+        } else if (j == m){
+            for(; i < m+n;){
+                resultantArray[i] = array2[k];
+                k++;
+                i++;
+            }
+        } else {
+            for(; i < m + n;){
+                resultantArray[i] = array1[j];
+                j++;
+                i++;
+            }
+        }
+    }
 }
