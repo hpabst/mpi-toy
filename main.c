@@ -15,6 +15,8 @@ void create_data(int*, int);
 int comp_func(const void*, const void*);
 void create_partitions(int numProcessors, int dataSize, int*, int*, int[][numProcessors/dataSize]);
 void merge(int*, int*, int*);
+void allocate_2d(int***, int, int);
+void free_2d(int***, int);
 
 struct timeval before, after;
 
@@ -53,7 +55,8 @@ int main(int argc, char* argv[]){
     MPI_Comm_get_parent(&intercomm);
 
 
-    int mydata[dataSize/numProcessors];
+    //int mydata[dataSize/numProcessors];
+    int* mydata = malloc((dataSize/numProcessors) * sizeof(int));
     memset(mydata, 0, sizeof(int)*(dataSize/numProcessors));
     if(myid == 0){ /**0 is the master machine, so it creates and distributes the data.**/
         int baseData[dataSize];
@@ -86,7 +89,8 @@ int main(int argc, char* argv[]){
 
 
     /**PHASE 2: FIND PIVOTS AND PARTITION **/
-    int collectedSamples[numProcessors * numProcessors];
+    //int collectedSamples[numProcessors * numProcessors];
+    int* collectedSamples = malloc((numProcessors*numProcessors) * sizeof(int));
     if(myid == 0){
         memset(collectedSamples, 0, sizeof(int) * (numProcessors * numProcessors));
         memcpy(collectedSamples, localSample, numProcessors * sizeof(int));
@@ -107,6 +111,9 @@ int main(int argc, char* argv[]){
             pivots[i-1] = collectedSamples[(i*numProcessors)+p-1];
         }
     }
+
+    free(collectedSamples);
+
     MPI_Bcast(pivots, numProcessors-1, MPI_INT, 0, MPI_COMM_WORLD);//Send the pivots from the master process to all the other processes.
     MPI_Barrier(MPI_COMM_WORLD);
 
@@ -117,7 +124,10 @@ int main(int argc, char* argv[]){
     memset(localPartitions, -1, dataSize * sizeof(int)); //Since we only deal with non-negative numbers, a value of -1 indicates the end of the partition.
     create_partitions(numProcessors, dataSize, pivots, mydata, localPartitions);
 
+    free(mydata);
+
     int sharedPartitions[numProcessors][dataSize/numProcessors];
+    //int** sharedPartitions = malloc((numProcessors * (dataSize/numProcessors)) * sizeof(int));
     memset(sharedPartitions, -1, dataSize * sizeof(int));
     for(i = 0; i < numProcessors; i++){
         MPI_Gather(&localPartitions[i][0], dataSize/numProcessors, MPI_INT, &sharedPartitions[0][0],
@@ -125,8 +135,10 @@ int main(int argc, char* argv[]){
     }
 
     /**PHASE 4: MERGE PARTITIONS **/
-    int resultArray[dataSize];
-    int tempHolder[dataSize];
+    //int resultArray[dataSize];
+    int* resultArray = malloc(dataSize * sizeof(int));
+    //int tempHolder[dataSize];
+    int* tempHolder = malloc(dataSize * sizeof(int));
     memset(resultArray, -1, dataSize * sizeof(int));
     memset(tempHolder, -1, dataSize * sizeof(int));
     merge(sharedPartitions[0], sharedPartitions[1], resultArray);
@@ -135,10 +147,13 @@ int main(int argc, char* argv[]){
         merge(tempHolder, &sharedPartitions[i][0], resultArray);
     }
 
+    free(tempHolder);
+
     MPI_Barrier(MPI_COMM_WORLD);
 
     /**PHASE 5: GATHER AND CONCATENATE MERGED PARTITIONS**/
-    int gatheredPartitions[dataSize * numProcessors];
+    //int gatheredPartitions[dataSize * numProcessors];
+    int* gatheredPartitions = malloc(dataSize * numProcessors * sizeof(int));
     int sortedKeys[dataSize];//The final container of the sorted keys.
     int sortMarker = 0;
     if(myid == 0){
@@ -148,6 +163,8 @@ int main(int argc, char* argv[]){
     }
     MPI_Gather(resultArray, dataSize, MPI_INT, gatheredPartitions, dataSize, MPI_INT, 0, MPI_COMM_WORLD);
 
+    free(resultArray);
+
     if(myid == 0){
         for(i = 0; i < dataSize * numProcessors; i++){
             if(gatheredPartitions[i] != -1){
@@ -156,6 +173,9 @@ int main(int argc, char* argv[]){
             }
         }
     }
+
+    free(gatheredPartitions);
+
     //We've sorted everything, so we stop timing.
     if(myid == 0){
         gettimeofday(&after, NULL);
@@ -243,7 +263,7 @@ void create_data(int* data, int numData){
     data[33] = 31;
     data[34] = 20;
     data[35] = 5;**/
-    srandom(20);
+     srandom(20);
     int i;
     for(i = 0; i < numData; i++){
         data[i] = random()%1000;
@@ -294,4 +314,20 @@ void merge(int* array1, int* array2, int* resultantArray){
             }
         }
     }
+}
+
+void allocate_2d(int*** ptr, int n, int m){
+    int i;
+    *ptr = (int**) malloc(n * sizeof(int*));
+    for(i = 0; i < n; i++){
+        (*ptr)[i] = (int*) malloc(m * sizeof(int));
+    }
+}
+
+void free_2d(int*** ptr, int n){
+    int i;
+    for(i = 0; i < n; i++){
+        free((*ptr)[i]);
+    }
+    free(*ptr);
 }
