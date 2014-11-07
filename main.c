@@ -8,12 +8,12 @@
 #include <math.h>
 #include <sys/time.h>
 
-#define DEBUG 0
+#define DEBUG 1
 
 
 void create_data(int*, int);
 int comp_func(const void*, const void*);
-void create_partitions(int numProcessors, int dataSize, int*, int*, int[][numProcessors/dataSize]);
+void create_partitions(int numProcessors, int dataSize, int*, int*, int**);
 void merge(int*, int*, int*);
 void allocate_2d(int***, int, int);
 void free_2d(int***, int);
@@ -119,22 +119,34 @@ int main(int argc, char* argv[]){
 
     /**PHASE 3: FIND AND EXCHANGE PARTITIONS **/
 
-    int localPartitions[numProcessors][dataSize/numProcessors]; //Using a 2-dimensional array to store local partitions.
+    //int localPartitions[numProcessors][dataSize/numProcessors]; //Using a 2-dimensional array to store local partitions.
+    int** localPartitions;
+    allocate_2d(&localPartitions, numProcessors, dataSize/numProcessors);
     //For each process there will be numProcessors partitions with a maximum size of dataSize/numProcessors each.
-    memset(localPartitions, -1, dataSize * sizeof(int)); //Since we only deal with non-negative numbers, a value of -1 indicates the end of the partition.
+    //memset(localPartitions, -1, dataSize * sizeof(int)); //Since we only deal with non-negative numbers, a value of -1 indicates the end of the partition.
+    for(i = 0; i < numProcessors; i++){
+        memset(localPartitions[i], -1, (dataSize/numProcessors) * sizeof(int));
+    }
     create_partitions(numProcessors, dataSize, pivots, mydata, localPartitions);
 
     free(mydata);
 
     int sharedPartitions[numProcessors][dataSize/numProcessors];
-    //int** sharedPartitions = malloc((numProcessors * (dataSize/numProcessors)) * sizeof(int));
+    //int** sharedPartitions;
+    //allocate_2d(&sharedPartitions, numProcessors, dataSize/numProcessors);
+    //for(i = 0; i < numProcessors; i++){
+    //    memset(sharedPartitions[i], -1, (dataSize/numProcessors) * sizeof(int));
+    //}
     memset(sharedPartitions, -1, dataSize * sizeof(int));
     for(i = 0; i < numProcessors; i++){
         MPI_Gather(&localPartitions[i][0], dataSize/numProcessors, MPI_INT, &sharedPartitions[0][0],
                    dataSize/numProcessors, MPI_INT, i, MPI_COMM_WORLD);
     }
 
+    free_2d(&localPartitions, numProcessors);
+
     /**PHASE 4: MERGE PARTITIONS **/
+    fprintf(stderr, "Starting phase 4.\n");
     //int resultArray[dataSize];
     int* resultArray = malloc(dataSize * sizeof(int));
     //int tempHolder[dataSize];
@@ -147,6 +159,7 @@ int main(int argc, char* argv[]){
         merge(tempHolder, &sharedPartitions[i][0], resultArray);
     }
 
+    //free_2d(&sharedPartitions, numProcessors);
     free(tempHolder);
 
     MPI_Barrier(MPI_COMM_WORLD);
@@ -199,7 +212,7 @@ int main(int argc, char* argv[]){
 
 
 
-void create_partitions(int numProcessors, int dataSize, int* pivots, int* local_data, int partition_array[][dataSize/numProcessors]){
+void create_partitions(int numProcessors, int dataSize, int* pivots, int* local_data, int** partition_array){
     /**
     * partition_array is a 2-dimensional array of ints, [numProcessors][dataSize/numProcessors],
     * pivots is an array of numProcessors-1 ints,
@@ -213,6 +226,7 @@ void create_partitions(int numProcessors, int dataSize, int* pivots, int* local_
             j += 1;
             part_size += 1;
         }
+        fprintf(stderr, "Attempting memcpy with i = %d.\n", i);
         memcpy(&partition_array[i][0], part_start, sizeof(int) * part_size);
         part_size = 0;
         part_start = &local_data[j];
@@ -227,7 +241,7 @@ void create_data(int* data, int numData){
     /**
     ** Fills the passed in int array with numData random numbers.
     **/
-    /**data[0] = 16;
+    data[0] = 16;
     data[1] = 2;
     data[2] = 17;
     data[3] = 24;
@@ -262,12 +276,12 @@ void create_data(int* data, int numData){
     data[32] = 26;
     data[33] = 31;
     data[34] = 20;
-    data[35] = 5;**/
-     srandom(20);
+    data[35] = 5;
+     /**srandom(20);
     int i;
     for(i = 0; i < numData; i++){
         data[i] = random()%1000;
-    }
+    }**/
     return;
 }
 
