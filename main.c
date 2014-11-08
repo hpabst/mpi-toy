@@ -242,7 +242,7 @@ void create_data(int* data, int numData){
     /**
     ** Fills the passed in int array with numData random numbers.
     **/
-    data[0] = 16;
+  /** data[0] = 16;
     data[1] = 2;
     data[2] = 17;
     data[3] = 24;
@@ -277,12 +277,12 @@ void create_data(int* data, int numData){
     data[32] = 26;
     data[33] = 31;
     data[34] = 20;
-    data[35] = 5;
-     /**srandom(20);
+    data[35] = 5;**/
+     srandom(20);
     int i;
     for(i = 0; i < numData; i++){
         data[i] = random()%1000;
-    }**/
+    }
     return;
 }
 
