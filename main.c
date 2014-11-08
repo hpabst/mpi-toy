@@ -8,7 +8,7 @@
 #include <math.h>
 #include <sys/time.h>
 
-#define DEBUG 1
+#define DEBUG 0
 
 
 void create_data(int*, int);
@@ -119,34 +119,27 @@ int main(int argc, char* argv[]){
 
     /**PHASE 3: FIND AND EXCHANGE PARTITIONS **/
 
-    //int localPartitions[numProcessors][dataSize/numProcessors]; //Using a 2-dimensional array to store local partitions.
     int** localPartitions;
     allocate_2d(&localPartitions, numProcessors, dataSize/numProcessors);
-    //For each process there will be numProcessors partitions with a maximum size of dataSize/numProcessors each.
-    //memset(localPartitions, -1, dataSize * sizeof(int)); //Since we only deal with non-negative numbers, a value of -1 indicates the end of the partition.
     for(i = 0; i < numProcessors; i++){
-        memset(localPartitions[i], -1, (dataSize/numProcessors) * sizeof(int));
+        memset(localPartitions[i], -1, (dataSize/numProcessors) * sizeof(int));//A value of -1 indicates the end of the partition.
     }
     create_partitions(numProcessors, dataSize, pivots, mydata, localPartitions);
 
     free(mydata);
 
-    //int sharedPartitions[numProcessors][dataSize/numProcessors];
     int** sharedPartitions;
     allocate_2d(&sharedPartitions, numProcessors, dataSize/numProcessors);
     for(i = 0; i < numProcessors; i++){
         memset(sharedPartitions[i], -1, (dataSize/numProcessors) * sizeof(int));
     }
-    //memset(sharedPartitions, -1, dataSize * sizeof(int));
     for(i = 0; i < numProcessors; i++){
         MPI_Gather(&localPartitions[i][0], dataSize/numProcessors, MPI_INT, &sharedPartitions[0][0],
                    dataSize/numProcessors, MPI_INT, i, MPI_COMM_WORLD);
     }
-
-    free_2d(&localPartitions, numProcessors);
+    //free_2d(&localPartitions, numProcessors);
 
     /**PHASE 4: MERGE PARTITIONS **/
-    fprintf(stderr, "Starting phase 4.\n");
     //int resultArray[dataSize];
     int* resultArray = malloc(dataSize * sizeof(int));
     //int tempHolder[dataSize];
@@ -176,7 +169,7 @@ int main(int argc, char* argv[]){
     }
     MPI_Gather(resultArray, dataSize, MPI_INT, gatheredPartitions, dataSize, MPI_INT, 0, MPI_COMM_WORLD);
 
-    free(resultArray);
+    //free(resultArray);
 
     if(myid == 0){
         for(i = 0; i < dataSize * numProcessors; i++){
@@ -226,13 +219,11 @@ void create_partitions(int numProcessors, int dataSize, int* pivots, int* local_
             j += 1;
             part_size += 1;
         }
-        fprintf(stderr, "Attempting memcpy with i = %d.\n", i);
         memcpy(&partition_array[i][0], part_start, sizeof(int) * part_size);
         part_size = 0;
         part_start = &local_data[j];
     }
     memcpy(&partition_array[numProcessors-1][0], part_start, sizeof(int) * ((dataSize/numProcessors) - j));
-    fprintf(stderr, "Exitting create_partitions.\n");
     //Put everything to the right of the last pivot into the final partition.
     return;
 }
@@ -332,17 +323,24 @@ void merge(int* array1, int* array2, int* resultantArray){
 }
 
 void allocate_2d(int*** ptr, int n, int m){
-    int i;
+   /** int i;
     *ptr = (int**) malloc(n * sizeof(int*));
     for(i = 0; i < n; i++){
         (*ptr)[i] = (int*) malloc(m * sizeof(int));
-    }
+    }**/
+    int i;
+    *ptr = (int**) malloc(n * sizeof(int));
+    int* arr_data = malloc(n * m * sizeof(int));
+    for(i = 0; i < n; i++)
+        (*ptr)[i] = arr_data + i * m;
+    return;
 }
 
 void free_2d(int*** ptr, int n){
-    int i;
+    /**int i;
     for(i = 0; i < n; i++){
         free((*ptr)[i]);
     }
-    free(*ptr);
+    free(*ptr);**/
+    free(ptr);
 }
