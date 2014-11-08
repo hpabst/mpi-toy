@@ -131,13 +131,13 @@ int main(int argc, char* argv[]){
 
     free(mydata);
 
-    int sharedPartitions[numProcessors][dataSize/numProcessors];
-    //int** sharedPartitions;
-    //allocate_2d(&sharedPartitions, numProcessors, dataSize/numProcessors);
-    //for(i = 0; i < numProcessors; i++){
-    //    memset(sharedPartitions[i], -1, (dataSize/numProcessors) * sizeof(int));
-    //}
-    memset(sharedPartitions, -1, dataSize * sizeof(int));
+    //int sharedPartitions[numProcessors][dataSize/numProcessors];
+    int** sharedPartitions;
+    allocate_2d(&sharedPartitions, numProcessors, dataSize/numProcessors);
+    for(i = 0; i < numProcessors; i++){
+        memset(sharedPartitions[i], -1, (dataSize/numProcessors) * sizeof(int));
+    }
+    //memset(sharedPartitions, -1, dataSize * sizeof(int));
     for(i = 0; i < numProcessors; i++){
         MPI_Gather(&localPartitions[i][0], dataSize/numProcessors, MPI_INT, &sharedPartitions[0][0],
                    dataSize/numProcessors, MPI_INT, i, MPI_COMM_WORLD);
@@ -232,6 +232,7 @@ void create_partitions(int numProcessors, int dataSize, int* pivots, int* local_
         part_start = &local_data[j];
     }
     memcpy(&partition_array[numProcessors-1][0], part_start, sizeof(int) * ((dataSize/numProcessors) - j));
+    fprintf(stderr, "Exitting create_partitions.\n");
     //Put everything to the right of the last pivot into the final partition.
     return;
 }
