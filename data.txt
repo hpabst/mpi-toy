@@ -47,3 +47,43 @@ SEQUENTIAL SORT
 13625 us 3 sec
 
 
+2 MACHINE SORT
+
+200 000 keys:
+
+59957 us 2 sec
+-66688 us 2 sec
+-4414 us 2 sec
+59801 us 2 sec
+60406 us 2 sec
+60454 us 2 sec
+-67055 us 2 sec
+-67359 us 2 sec
+
+400 000 keys:
+
+481101 us 3 sec
+355860 us 3 sec
+418497 us 3 sec
+356555 us 3 sec
+355862 us 3 sec
+481404 us 3 sec
+-581344 us 4 sec
+-456377 us 4 sec
+
+
+800 000 keys:
+
+12887 us 6 sec
+76274 us 6 sec
+263050 us 6 sec
+74848 us 6 sec
+201299 us 6 sec
+13925 us 6 sec
+137648 us 6 sec
+-922723 us 7 sec
+
+
+1 600 000 keys:
+
+198432 us 11 sec
