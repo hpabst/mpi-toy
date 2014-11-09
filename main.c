@@ -8,7 +8,7 @@
 #include <math.h>
 #include <sys/time.h>
 
-#define DEBUG 0
+#define DEBUG 1
 
 
 void create_data(int*, int);
@@ -57,19 +57,25 @@ int main(int argc, char* argv[]){
 
     //int mydata[dataSize/numProcessors];
     int* mydata = malloc((dataSize/numProcessors) * sizeof(int));
+    //int* baseData = malloc(dataSize * sizeof(int));
+    int baseData[dataSize];
+    memset(baseData, 0, sizeof(int) * dataSize);
     memset(mydata, 0, sizeof(int)*(dataSize/numProcessors));
     if(myid == 0){ /**0 is the master machine, so it creates and distributes the data.**/
-        int baseData[dataSize];
-        memset(baseData, 0, sizeof(int)*dataSize);
+      //int baseData[dataSize];
+      //memset(baseData, 0, sizeof(int)*dataSize);
         create_data(baseData, dataSize);
+     }
 
-        for(i = 1; i < numProcessors; i++){ /**Send the data to all the other processors.**/
+        /**for(i = 1; i < numProcessors; i++){ //Send the data to all the other processors.
             MPI_Send(&baseData[0] + (i*(dataSize/numProcessors)), dataSize/numProcessors, MPI_INT, i, 0, MPI_COMM_WORLD);
         }
         memcpy(mydata, baseData, sizeof(int) * (dataSize/numProcessors));
-    } else { /**Otherwise you're a child machine, so you wait for your data and then wait at the barrier for Phase 1.**/
+    } else { //Otherwise you're a child machine, so you wait for your data and then wait at the barrier for Phase 1.
         MPI_Recv(mydata, dataSize/numProcessors, MPI_INT, 0, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
-    }
+	}**/
+    MPI_Scatter(baseData,dataSize/numProcessors, MPI_INT, mydata, dataSize/numProcessors,
+		MPI_INT, 0, MPI_COMM_WORLD);
     MPI_Barrier(MPI_COMM_WORLD);
 
 
@@ -233,7 +239,7 @@ void create_data(int* data, int numData){
     /**
     ** Fills the passed in int array with numData random numbers.
     **/
-  /** data[0] = 16;
+    /**data[0] = 16;
     data[1] = 2;
     data[2] = 17;
     data[3] = 24;
@@ -269,7 +275,7 @@ void create_data(int* data, int numData){
     data[33] = 31;
     data[34] = 20;
     data[35] = 5;**/
-     srandom(20);
+    srandom(20);
     int i;
     for(i = 0; i < numData; i++){
         data[i] = random()%1000;
