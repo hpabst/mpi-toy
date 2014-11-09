@@ -8,7 +8,7 @@
 #include <math.h>
 #include <sys/time.h>
 
-#define DEBUG 1
+#define DEBUG 0
 
 
 void create_data(int*, int);
