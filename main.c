@@ -62,8 +62,6 @@ int main(int argc, char* argv[]){
     memset(baseData, 0, sizeof(int) * dataSize);
     memset(mydata, 0, sizeof(int)*(dataSize/numProcessors));
     if(myid == 0){ /**0 is the master machine, so it creates and distributes the data.**/
-      //int baseData[dataSize];
-      //memset(baseData, 0, sizeof(int)*dataSize);
         create_data(baseData, dataSize);
      }
 
@@ -75,7 +73,7 @@ int main(int argc, char* argv[]){
         MPI_Recv(mydata, dataSize/numProcessors, MPI_INT, 0, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
 	}**/
     MPI_Scatter(baseData,dataSize/numProcessors, MPI_INT, mydata, dataSize/numProcessors,
-		MPI_INT, 0, MPI_COMM_WORLD);
+                MPI_INT, 0, MPI_COMM_WORLD);
     MPI_Barrier(MPI_COMM_WORLD);
 
 
@@ -99,15 +97,10 @@ int main(int argc, char* argv[]){
     int* collectedSamples = malloc((numProcessors*numProcessors) * sizeof(int));
     if(myid == 0){
         memset(collectedSamples, 0, sizeof(int) * (numProcessors * numProcessors));
-        memcpy(collectedSamples, localSample, numProcessors * sizeof(int));
-        for(i = 1; i < numProcessors; i++){
-            MPI_Recv(&collectedSamples[0] + (i*numProcessors), numProcessors, MPI_INT, i, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
-            /**Receives the regular sample from processor i and stores it in collectedSamples.**/
-        }
-        qsort(collectedSamples, numProcessors * numProcessors, sizeof(int), comp_func);
-    } else {
-        MPI_Send(localSample, numProcessors, MPI_INT, 0, 0, MPI_COMM_WORLD);
     }
+
+    MPI_Gather(localSample, numProcessors, MPI_INT, collectedSamples, numProcessors, MPI_INT, 0, MPI_COMM_WORLD);
+    qsort(collectedSamples, numProcessors * numProcessors, sizeof(int), comp_func);
     MPI_Barrier(MPI_COMM_WORLD); //Mid phase 2 barrier.
 
     int pivots[numProcessors-1];
