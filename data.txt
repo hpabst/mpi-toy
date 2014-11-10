@@ -83,4 +83,116 @@
 
 200 000 keys:
 
+213205 us 0 sec
+214545 us 0 sec
+212201 us 0 sec
+212963 us 0 sec
+214381 us 0 sec
+214356 us 0 sec
+212957 us 0 sec
+213665 us 0 sec
+
+
+400 000 keys:
+
+382175 us 0 sec
+384284 us 0 sec
+383318 us 0 sec
+381737 us 0 sec
+379807 us 0 sec
+381300 us 0 sec
+383729 us 0 sec
+384273 us 0 sec
+
+
+
+800 000 keys:
+
+720477 us 0 sec
+717488 us 0 sec
+722421 us 0 sec
+716118 us 0 sec
+718150 us 0 sec
+717671 us 0 sec
+716852 us 0 sec
+705478 us 0 sec
+
+
+
+
+
+SEQUENTIAL SORT:
+
+200 000 keys:
+
+62321 us 0 sec
+62410 us 0 sec
+62182 us 0 sec
+62359 us 0 sec
+62577 us 0 sec
+62346 us 0 sec
+61965 us 0 sec
+62315 us 0 sec
+
+400 000 keys:
+
+127667 us 0 sec
+127479 us 0 sec
+128063 us 0 sec
+127905 us 0 sec
+127766 us 0 sec
+127635 us 0 sec
+128108 us 0 sec
+128041 us 0 sec
+
+
+800 000 keys:
+
+259567 us 0 sec
+261182 us 0 sec
+261675 us 0 sec
+260865 us 0 sec
+259933 us 0 sec
+261030 us 0 sec
+260878 us 0 sec
+260920 us 0 sec
+
+
+2 PROCESS SORT:
+
+200 000 keys:
+
+44323 us 0 sec
+44357 us 0 sec
+44306 us 0 sec
+44595 us 0 sec
+44479 us 0 sec
+44687 us 0 sec
+44411 us 0 sec
+47371 us 0 sec
+
+400 000 keys:
+
+91729 us 0 sec
+91009 us 0 sec
+91190 us 0 sec
+90905 us 0 sec
+90618 us 0 sec
+89668 us 0 sec
+89343 us 0 sec
+90807 us 0 sec
+
+
+800 000 keys:
+
+183910 us 0 sec
+181572 us 0 sec
+179924 us 0 sec
+180494 us 0 sec
+184408 us 0 sec
+182802 us 0 sec
+182911 us 0 sec
+182716 us 0 sec
+
+
 
