@@ -1,89 +1,86 @@
-SEQUENTIAL SORT
-
-2 000 000 keys:
-
-3441779 us 0 sec
--658028 us 1 sec
-342695 us 0 sec
-343980 us 0 sec
-342492 us 0 sec
--657439 us 1 sec
-342893 us 0 sec
--656090 us 1 sec
-
-4 000 000 keys:
-
--291042 us 1 sec
-705751 us 0 sec
-704112 us 0 sec
--294656 us 1 sec
--293537 us 1 sec
--295404 us 1 sec
-704465 us 0 sec
-705464 us 0 sec
-
-
-8 000 000 keys:
-
--546191 us 2 sec
--547467 us 2 sec
-455313 us 1 sec
-454179 us 1 sec
-456954 us 1 sec
-450617 us 1 sec
-443310 us 1 sec
-457628 us 1 sec
-
-
-16 000 000 keys:
-
-21221 us 3 sec
-20839 us 3 sec
-16807 us 3 sec
-22834 us 3 sec
-21239 us 3 sec
-17211 us 3 sec
-20442 us 3 sec
-13625 us 3 sec
-
-
 2 MACHINE SORT
 
 200 000 keys:
 
-59957 us 2 sec
--66688 us 2 sec
--4414 us 2 sec
-59801 us 2 sec
-60406 us 2 sec
-60454 us 2 sec
--67055 us 2 sec
--67359 us 2 sec
+53407 us 0 sec
+53360 us 0 sec
+53551 us 0 sec
+53799 us 0 sec
+53631 us 0 sec
+53629 us 0 sec
+53500 us 0 sec
+53698 us 0 sec
+
 
 400 000 keys:
 
-481101 us 3 sec
-355860 us 3 sec
-418497 us 3 sec
-356555 us 3 sec
-355862 us 3 sec
-481404 us 3 sec
--581344 us 4 sec
--456377 us 4 sec
+107660 us 0 sec
+106217 us 0 sec
+105637 us 0 sec
+106338 us 0 sec
+107355 us 0 sec
+108064 us 0 sec
+105520 us 0 sec
+106331 us 0 sec
 
 
 800 000 keys:
 
-12887 us 6 sec
-76274 us 6 sec
-263050 us 6 sec
-74848 us 6 sec
-201299 us 6 sec
-13925 us 6 sec
-137648 us 6 sec
--922723 us 7 sec
+210634 us 0 sec
+209485 us 0 sec
+211025 us 0 sec
+208741 us 0 sec
+210102 us 0 sec
+209092 us 0 sec
+210594 us 0 sec
+210039 us 0 sec
 
 
-1 600 000 keys:
+4 MACHINE SORT
 
-198432 us 11 sec
+200 000 keys:
+
+278453 us 0 sec
+75368 us 0 sec
+76113 us 0 sec
+77922 us 0 sec
+77383 us 0 sec
+84966 us 0 sec
+83419 us 0 sec
+84866 us 0 sec
+
+
+400 000 keys:
+
+155377 us 0 sec
+156709 us 0 sec
+156073 us 0 sec
+156991 us 0 sec
+162769 us 0 sec
+163400 us 0 sec
+162674 us 0 sec
+163169 us 0 sec
+
+
+800 000 keys:
+
+324143 us 0 sec
+321065 us 0 sec
+320230 us 0 sec
+320130 us 0 sec
+321521 us 0 sec
+320314 us 0 sec
+319903 us 0 sec
+320785 us 0 sec
+
+
+
+
+
+
+
+8 MACHINE SORT
+
+200 000 keys:
+
+
