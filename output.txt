@@ -1,0 +1,39 @@
+Final time count for 200000 items and 4 processes:
+ 225440 microseconds
+ 0 seconds
+Final time count for 200000 items and 4 processes:
+ -797121 microseconds
+ 1 seconds
+Final time count for 200000 items and 4 processes:
+ 242533 microseconds
+ 0 seconds
+Final time count for 200000 items and 4 processes:
+ 227634 microseconds
+ 0 seconds
+Final time count for 200000 items and 4 processes:
+ -751599 microseconds
+ 1 seconds
+Final time count for 200000 items and 4 processes:
+ 281835 microseconds
+ 0 seconds
+Final time count for 200000 items and 4 processes:
+ -746370 microseconds
+ 1 seconds
+Final time count for 200000 items and 4 processes:
+ 219286 microseconds
+ 0 seconds
+Final time count for 200000 items and 4 processes:
+ -715429 microseconds
+ 1 seconds
+Final time count for 200000 items and 4 processes:
+ 178366 microseconds
+ 0 seconds
+Final time count for 200000 items and 4 processes:
+ 202300 microseconds
+ 0 seconds
+Final time count for 200000 items and 4 processes:
+ 205685 microseconds
+ 0 seconds
+Final time count for 200000 items and 4 processes:
+ 208492 microseconds
+ 0 seconds
