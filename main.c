@@ -19,10 +19,11 @@ void allocate_2d(int***, int, int);
 void free_2d(int***, int);
 
 struct timeval before, after;
+FILE* output;
 
 int main(int argc, char* argv[]){
 
-
+ 
     /** PHASE 0: CREATE AND DISTRIBUTE DATA. **/
     int numProcessors, dataSize, myid,namelen, w, p;
     /**numProcessors is the number of processors we are using to sort, dataSize is the number of integers we are sorting,
@@ -53,18 +54,18 @@ int main(int argc, char* argv[]){
     MPI_Comm_rank(MPI_COMM_WORLD, &myid);
     MPI_Get_processor_name(processor_name, &namelen);
     MPI_Comm_get_parent(&intercomm);
-
-
+    fprintf(stderr, "Process %d is past MPI initialization.\n", myid);
     //int mydata[dataSize/numProcessors];
-    int* mydata = malloc((dataSize/numProcessors) * sizeof(int));
+    int* mydata = calloc(dataSize/numProcessors, sizeof(int));
     //int* baseData = malloc(dataSize * sizeof(int));
     int baseData[dataSize];
     memset(baseData, 0, sizeof(int) * dataSize);
-    memset(mydata, 0, sizeof(int)*(dataSize/numProcessors));
+    // memset(mydata, 0, sizeof(int)*(dataSize/numProcessors));
     if(myid == 0){ /**0 is the master machine, so it creates and distributes the data.**/
         create_data(baseData, dataSize);
+	output = fopen("output.txt", "a");
      }
-
+    fprintf(stderr, "Process %d has passed data creation.\n", myid);
         /**for(i = 1; i < numProcessors; i++){ //Send the data to all the other processors.
             MPI_Send(&baseData[0] + (i*(dataSize/numProcessors)), dataSize/numProcessors, MPI_INT, i, 0, MPI_COMM_WORLD);
         }
@@ -74,8 +75,9 @@ int main(int argc, char* argv[]){
 	}**/
     MPI_Scatter(baseData,dataSize/numProcessors, MPI_INT, mydata, dataSize/numProcessors,
                 MPI_INT, 0, MPI_COMM_WORLD);
-    MPI_Barrier(MPI_COMM_WORLD);
-
+    fprintf(stderr, "Process %d has passed the phase 0 scatter.\n", myid);
+    //    MPI_Barrier(MPI_COMM_WORLD);
+    fprintf(stderr, "Process %d is past phase 0 barrier.\n", myid);
 
     /** PHASE 1: SORT LOCAL DATA AND FIND LOCAL SAMPLES **/
     //We start to measure time assuming all the data has already been distributed.
@@ -89,8 +91,9 @@ int main(int argc, char* argv[]){
     for(i = 0; i < numProcessors; i++){
         localSample[i] = mydata[i*w];
     }
+    fprintf(stderr, "Process %d is at the phase 1 barrier.\n", myid);
     MPI_Barrier(MPI_COMM_WORLD);
-
+    fprintf(stderr, "Process %d is past phase 1 barrier.\n", myid);
 
     /**PHASE 2: FIND PIVOTS AND PARTITION **/
     //int collectedSamples[numProcessors * numProcessors];
@@ -102,7 +105,7 @@ int main(int argc, char* argv[]){
     MPI_Gather(localSample, numProcessors, MPI_INT, collectedSamples, numProcessors, MPI_INT, 0, MPI_COMM_WORLD);
     qsort(collectedSamples, numProcessors * numProcessors, sizeof(int), comp_func);
     MPI_Barrier(MPI_COMM_WORLD); //Mid phase 2 barrier.
-
+    fprintf(stderr, "Process %d past mid-phase 2 barrier.\n", myid);
     int pivots[numProcessors-1];
     memset(pivots, 0, sizeof(int) * (numProcessors-1));
     if(myid == 0){
@@ -115,7 +118,7 @@ int main(int argc, char* argv[]){
 
     MPI_Bcast(pivots, numProcessors-1, MPI_INT, 0, MPI_COMM_WORLD);//Send the pivots from the master process to all the other processes.
     MPI_Barrier(MPI_COMM_WORLD);
-
+    fprintf(stderr, "Process %d past phase 2 barrier.\n", myid);
     /**PHASE 3: FIND AND EXCHANGE PARTITIONS **/
 
     int** localPartitions;
@@ -124,7 +127,7 @@ int main(int argc, char* argv[]){
         memset(localPartitions[i], -1, (dataSize/numProcessors) * sizeof(int));//A value of -1 indicates the end of the partition.
     }
     create_partitions(numProcessors, dataSize, pivots, mydata, localPartitions);
-
+    fprintf(stderr, "Process %d has created partitions.\n", myid);
     free(mydata);
 
     int** sharedPartitions;
@@ -136,6 +139,7 @@ int main(int argc, char* argv[]){
         MPI_Gather(&localPartitions[i][0], dataSize/numProcessors, MPI_INT, &sharedPartitions[0][0],
                    dataSize/numProcessors, MPI_INT, i, MPI_COMM_WORLD);
     }
+    fprintf(stderr, "Process %d has passed partition exchanging.\n", myid);
     //free_2d(&localPartitions, numProcessors);
 
     /**PHASE 4: MERGE PARTITIONS **/
@@ -184,8 +188,10 @@ int main(int argc, char* argv[]){
     //We've sorted everything, so we stop timing.
     if(myid == 0){
         gettimeofday(&after, NULL);
-        printf("Final time count for %d items and %d processes:\n %ld microseconds\n %ld seconds\n", dataSize, numProcessors,
+        fprintf(output, "Final time count for %d items and %d processes:\n %ld microseconds\n %ld seconds\n", dataSize, numProcessors,
                (long int) after.tv_usec - (long int) before.tv_usec, (long int) after.tv_sec - (long int) before.tv_sec);
+	fflush(output);
+	fclose(output);
     }
 
 #if DEBUG
@@ -271,7 +277,7 @@ void create_data(int* data, int numData){
     srandom(20);
     int i;
     for(i = 0; i < numData; i++){
-        data[i] = random()%1000;
+        data[i] = random();
     }
     return;
 }
