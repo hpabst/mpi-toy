@@ -55,30 +55,24 @@ int main(int argc, char* argv[]){
     MPI_Comm_rank(MPI_COMM_WORLD, &myid);
     MPI_Get_processor_name(processor_name, &namelen);
     MPI_Comm_get_parent(&intercomm);
+#if DEBUG
     fprintf(stderr, "Process %d is past MPI initialization.\n", myid);
-    //int mydata[dataSize/numProcessors];
+#endif
     int* mydata = calloc(dataSize/numProcessors, sizeof(int));
-    //int* baseData = malloc(dataSize * sizeof(int));
     int baseData[dataSize];
     memset(baseData, 0, sizeof(int) * dataSize);
-    // memset(mydata, 0, sizeof(int)*(dataSize/numProcessors));
-    if(myid == 0){ /**0 is the master machine, so it creates and distributes the data.**/
+    if(myid == 0){ //0 is the master machine, so it creates and distributes the data.
         create_data(baseData, dataSize);
 	output = fopen("output.txt", "a");
      }
+#if DEBUG
     fprintf(stderr, "Process %d has passed data creation.\n", myid);
-        /**for(i = 1; i < numProcessors; i++){ //Send the data to all the other processors.
-            MPI_Send(&baseData[0] + (i*(dataSize/numProcessors)), dataSize/numProcessors, MPI_INT, i, 0, MPI_COMM_WORLD);
-        }
-        memcpy(mydata, baseData, sizeof(int) * (dataSize/numProcessors));
-    } else { //Otherwise you're a child machine, so you wait for your data and then wait at the barrier for Phase 1.
-        MPI_Recv(mydata, dataSize/numProcessors, MPI_INT, 0, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
-	}**/
+#endif
     MPI_Scatter(baseData,dataSize/numProcessors, MPI_INT, mydata, dataSize/numProcessors,
                 MPI_INT, 0, MPI_COMM_WORLD);
+#if DEBUG
     fprintf(stderr, "Process %d has passed the phase 0 scatter.\n", myid);
-    //    MPI_Barrier(MPI_COMM_WORLD);
-    fprintf(stderr, "Process %d is past phase 0 barrier.\n", myid);
+#endif
 
     /** PHASE 1: SORT LOCAL DATA AND FIND LOCAL SAMPLES **/
     //We start to measure time assuming all the data has already been distributed.
@@ -92,21 +86,22 @@ int main(int argc, char* argv[]){
     for(i = 0; i < numProcessors; i++){
         localSample[i] = mydata[i*w];
     }
-    fprintf(stderr, "Process %d is at the phase 1 barrier.\n", myid);
     MPI_Barrier(MPI_COMM_WORLD);
+#if DEBUG
     fprintf(stderr, "Process %d is past phase 1 barrier.\n", myid);
+#endif
 
     /**PHASE 2: FIND PIVOTS AND PARTITION **/
-    //int collectedSamples[numProcessors * numProcessors];
     int* collectedSamples = malloc((numProcessors*numProcessors) * sizeof(int));
     if(myid == 0){
         memset(collectedSamples, 0, sizeof(int) * (numProcessors * numProcessors));
     }
-
     MPI_Gather(localSample, numProcessors, MPI_INT, collectedSamples, numProcessors, MPI_INT, 0, MPI_COMM_WORLD);
     qsort(collectedSamples, numProcessors * numProcessors, sizeof(int), comp_func);
     MPI_Barrier(MPI_COMM_WORLD); //Mid phase 2 barrier.
+#if DEBUG
     fprintf(stderr, "Process %d past mid-phase 2 barrier.\n", myid);
+#endif
     int pivots[numProcessors-1];
     memset(pivots, 0, sizeof(int) * (numProcessors-1));
     if(myid == 0){
@@ -119,7 +114,9 @@ int main(int argc, char* argv[]){
 
     MPI_Bcast(pivots, numProcessors-1, MPI_INT, 0, MPI_COMM_WORLD);//Send the pivots from the master process to all the other processes.
     MPI_Barrier(MPI_COMM_WORLD);
+#if DEBUG
     fprintf(stderr, "Process %d past phase 2 barrier.\n", myid);
+#endif
     /**PHASE 3: FIND AND EXCHANGE PARTITIONS **/
 
     int** localPartitions;
@@ -128,7 +125,9 @@ int main(int argc, char* argv[]){
         memset(localPartitions[i], -1, (dataSize/numProcessors) * sizeof(int));//A value of -1 indicates the end of the partition.
     }
     create_partitions(numProcessors, dataSize, pivots, mydata, localPartitions);
+#if DEBUG
     fprintf(stderr, "Process %d has created partitions.\n", myid);
+#endif
     free(mydata);
 
     int** sharedPartitions;
@@ -140,11 +139,10 @@ int main(int argc, char* argv[]){
         MPI_Gather(&localPartitions[i][0], dataSize/numProcessors, MPI_INT, &sharedPartitions[0][0],
                    dataSize/numProcessors, MPI_INT, i, MPI_COMM_WORLD);
     }
+#if DEBUG
     fprintf(stderr, "Process %d has passed partition exchanging.\n", myid);
-    //free_2d(&localPartitions, numProcessors);
-
+#endif
     /**PHASE 4: MERGE PARTITIONS **/
-    //int resultArray[dataSize];
 #if RDFA
     int sum = 0;
     for(i = 0; i < numProcessors; i++){
@@ -153,7 +151,6 @@ int main(int argc, char* argv[]){
     fprintf(stderr, "Process %d is merging %d keys total.\n", myid, sum);
 #endif
     int* resultArray = malloc(dataSize * sizeof(int));
-    //int tempHolder[dataSize];
     int* tempHolder = malloc(dataSize * sizeof(int));
     memset(resultArray, -1, dataSize * sizeof(int));
     memset(tempHolder, -1, dataSize * sizeof(int));
@@ -162,14 +159,11 @@ int main(int argc, char* argv[]){
         memcpy(tempHolder, resultArray, dataSize * sizeof(int));
         merge(tempHolder, &sharedPartitions[i][0], resultArray);
     }
-
-    //free_2d(&sharedPartitions, numProcessors);
     free(tempHolder);
-
+    
     MPI_Barrier(MPI_COMM_WORLD);
-
+    
     /**PHASE 5: GATHER AND CONCATENATE MERGED PARTITIONS**/
-    //int gatheredPartitions[dataSize * numProcessors];
     int* gatheredPartitions = malloc(dataSize * numProcessors * sizeof(int));
     int sortedKeys[dataSize];//The final container of the sorted keys.
     int sortMarker = 0;
@@ -179,8 +173,6 @@ int main(int argc, char* argv[]){
         memset(sortedKeys, 0, dataSize * sizeof(int));
     }
     MPI_Gather(resultArray, dataSize, MPI_INT, gatheredPartitions, dataSize, MPI_INT, 0, MPI_COMM_WORLD);
-
-    //free(resultArray);
 
     if(myid == 0){
         for(i = 0; i < dataSize * numProcessors; i++){
@@ -210,7 +202,8 @@ int main(int argc, char* argv[]){
         }
     }
 #endif
-    MPI_Finalize();
+
+    MPI_Finalize();//Known bug that this segfaults with MPICH, hence writing output to a file.
     return 0;
 }
 
@@ -246,42 +239,6 @@ void create_data(int* data, int numData){
     /**
     ** Fills the passed in int array with numData random numbers.
     **/
-    /**data[0] = 16;
-    data[1] = 2;
-    data[2] = 17;
-    data[3] = 24;
-    data[4] = 33;
-    data[5] = 28;
-    data[6] = 30;
-    data[7] = 1;
-    data[8] = 0;
-    data[9] = 27;
-    data[10] = 9;
-    data[11] = 25;
-    data[12] = 34;
-    data[13] = 23;
-    data[14] = 19;
-    data[15] = 18;
-    data[16] = 11;
-    data[17] = 7;
-    data[18] = 21;
-    data[19] = 13;
-    data[20] = 8;
-    data[21] = 35;
-    data[22] = 12;
-    data[23] = 29;
-    data[24] = 6;
-    data[25] = 3;
-    data[26] = 4;
-    data[27] = 14;
-    data[28] = 22;
-    data[29] = 15;
-    data[30] = 32;
-    data[31] = 10;
-    data[32] = 26;
-    data[33] = 31;
-    data[34] = 20;
-    data[35] = 5;**/
     srandom(20);
     int i;
     for(i = 0; i < numData; i++){
@@ -336,11 +293,7 @@ void merge(int* array1, int* array2, int* resultantArray){
 }
 
 void allocate_2d(int*** ptr, int n, int m){
-   /** int i;
-    *ptr = (int**) malloc(n * sizeof(int*));
-    for(i = 0; i < n; i++){
-        (*ptr)[i] = (int*) malloc(m * sizeof(int));
-    }**/
+	/**Allocates memory for a 2D array of ints.**/
     int i;
     *ptr = (int**) malloc(n * sizeof(int));
     int* arr_data = malloc(n * m * sizeof(int));
@@ -350,15 +303,13 @@ void allocate_2d(int*** ptr, int n, int m){
 }
 
 void free_2d(int*** ptr, int n){
-    /**int i;
-    for(i = 0; i < n; i++){
-        free((*ptr)[i]);
-    }
-    free(*ptr);**/
+	//Frees memory allocated for 2D array, had some errors and not enough time to fix.
+	//So this is a bit of a memory leak.
     free(ptr);
 }
 
 int sizeof_array(int* array){
+	//Returns the size of one of the partition arrays passed in.
   int i=0;
   while(array[i] != -1){
     i++;
