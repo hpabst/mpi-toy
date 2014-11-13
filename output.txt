@@ -70,3 +70,15 @@ Final time count for 400000 items and 4 processes:
 Final time count for 800000 items and 4 processes:
  709819 microseconds
  0 seconds
+Final time count for 200000 items and 8 processes:
+ 188520 microseconds
+ 0 seconds
+Final time count for 400000 items and 8 processes:
+ 407551 microseconds
+ 0 seconds
+Final time count for 800000 items and 8 processes:
+ -269043 microseconds
+ 1 seconds
+Final time count for 200000 items and 8 processes:
+ 186059 microseconds
+ 0 seconds
