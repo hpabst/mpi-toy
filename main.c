@@ -9,7 +9,7 @@
 #include <sys/time.h>
 
 #define DEBUG 0
-
+#define RDFA 1
 
 void create_data(int*, int);
 int comp_func(const void*, const void*);
@@ -17,6 +17,7 @@ void create_partitions(int numProcessors, int dataSize, int*, int*, int**);
 void merge(int*, int*, int*);
 void allocate_2d(int***, int, int);
 void free_2d(int***, int);
+int sizeof_array(int*);
 
 struct timeval before, after;
 FILE* output;
@@ -144,6 +145,13 @@ int main(int argc, char* argv[]){
 
     /**PHASE 4: MERGE PARTITIONS **/
     //int resultArray[dataSize];
+#if RDFA
+    int sum = 0;
+    for(i = 0; i < numProcessors; i++){
+      sum += sizeof_array(sharedPartitions[i]);
+    }
+    fprintf(stderr, "Process %d is merging %d keys total.\n", myid, sum);
+#endif
     int* resultArray = malloc(dataSize * sizeof(int));
     //int tempHolder[dataSize];
     int* tempHolder = malloc(dataSize * sizeof(int));
@@ -348,4 +356,12 @@ void free_2d(int*** ptr, int n){
     }
     free(*ptr);**/
     free(ptr);
+}
+
+int sizeof_array(int* array){
+  int i=0;
+  while(array[i] != -1){
+    i++;
+  }
+  return i;
 }

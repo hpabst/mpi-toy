@@ -37,3 +37,36 @@ Final time count for 200000 items and 4 processes:
 Final time count for 200000 items and 4 processes:
  208492 microseconds
  0 seconds
+Final time count for 200000 items and 2 processes:
+ 71089 microseconds
+ 0 seconds
+Final time count for 400000 items and 2 processes:
+ 145951 microseconds
+ 0 seconds
+Final time count for 200000 items and 2 processes:
+ 71576 microseconds
+ 0 seconds
+Final time count for 400000 items and 2 processes:
+ 147157 microseconds
+ 0 seconds
+Final time count for 800000 items and 2 processes:
+ 315654 microseconds
+ 0 seconds
+Final time count for 200000 items and 4 processes:
+ 272217 microseconds
+ 0 seconds
+Final time count for 200000 items and 4 processes:
+ 277525 microseconds
+ 0 seconds
+Final time count for 200000 items and 4 processes:
+ 231742 microseconds
+ 0 seconds
+Final time count for 400000 items and 4 processes:
+ 467686 microseconds
+ 0 seconds
+Final time count for 400000 items and 4 processes:
+ 503285 microseconds
+ 0 seconds
+Final time count for 800000 items and 4 processes:
+ 709819 microseconds
+ 0 seconds
